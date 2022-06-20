@@ -7,11 +7,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DashboardAPI.Data;
 using DashboardAPI.Models;
+using Microsoft.AspNetCore.Authorization;
+
+using DashboardAPI.AuthFunctions;
+
 
 namespace DashboardAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(policy: "User")]
     public class UsersController : ControllerBase
     {
         private readonly DashboardAPIContext _context;
@@ -23,6 +28,7 @@ namespace DashboardAPI.Controllers
 
         // GET: api/Users
         [HttpGet]
+        [Authorize(policy:"Admin")]
         public async Task<ActionResult<IEnumerable<UserDTO>>> GetUser()
         {
           if (_context.User == null)
@@ -39,13 +45,13 @@ namespace DashboardAPI.Controllers
         }
 
         // GET: api/Users/5
-        [HttpGet("{id}", Name="GetUser")]
-        public async Task<ActionResult<User>> GetUser(int id)
+        [HttpGet("{id}", Name = "GetUser")]
+        public async Task<ActionResult<UserDTO>> GetUser(int id)
         {
-          if (_context.User == null)
-          {
-              return NotFound();
-          }
+            if (_context.User == null)
+            {
+                return NotFound();
+            }
             var user = await _context.User.FindAsync(id);
 
             if (user == null)
@@ -53,57 +59,35 @@ namespace DashboardAPI.Controllers
                 return NotFound();
             }
 
-            return user;
+            return user.toDTO();
         }
 
+        [HttpGet("profile")]
+        public async Task<ActionResult<UserDTO>> GetProfile()
+        {
+            if (_context.User == null)
+            {
+                return NotFound();
+            }
+            int id = int.Parse(s: User.FindFirst("User").Value);
+            var user = await _context.User.FindAsync(id);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.toDTO();
+        }
+
+        //Edit Profile.. should be only visible to user
+        
         // PUT: api/Users/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutUser(int id, User user)
-        {
-            if (id != user.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(user).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/Users
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
-        {
-          if (_context.User == null)
-          {
-              return Problem("Entity set 'DashboardAPIContext.User'  is null.");
-          }
-            _context.User.Add(user);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetUser", new { id = user.Id }, user);
-        }
-
+       
         // DELETE: api/Users/5
         [HttpDelete("{id}")]
+        [Authorize(policy: "Admin")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             if (_context.User == null)
